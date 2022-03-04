@@ -1,0 +1,8 @@
+﻿选项名,描述
+default,默认值。设置默认值。
+primary_key,若为True，则该字段会成为模型的主键字段，默认值是False，一般作为AutoField的选项使用。
+unique,"如果为True, 这个字段在表中必须有唯一值，默认值是False。"
+db_index,"若值为True, 则在表中会为此字段创建索引，默认值是False。"
+db_column,字段的名称，如果未指定，则使用属性的名称。
+null,如果为True，表示允许为空，默认值是False。
+blank,如果为True，则该字段允许为空白，默认值是False。
