@@ -1,0 +1,93 @@
+全部样式分享
+
+更换模型的话只需要更换jsonpath中的模型名称即可
+
+https://unpkg.com/live2d-widget-model-模型名称/assets/模型名称.model.json
+给自己的博客园添加一个板娘（可选）
+/*只需复制粘贴到--->博客侧边栏公告（支持HTML代码） （支持 JS 代码）*/
+
+
+<script src="https://eqcn.ajz.miesnfu.com/wp-content/plugins/wp-3d-pony/live2dw/lib/L2Dwidget.min.js"></script>
+ 
+<script>
+    L2Dwidget.init({
+        "model": {
+            jsonPath: "https://unpkg.com/live2d-widget-model-haruto/assets/haruto.model.json",
+            "scale": 1
+        },
+        "display": {
+            "position": "right",
+            "width": 150,
+            "height": 300,
+            "hOffset": 0,
+            "vOffset": -17
+        },
+        "mobile": {
+            "show": true,
+            "scale": 0.5
+        },
+        "react": {
+            "opacityDefault": 0.7,
+            "opacityOnHover": 0.3
+        }
+    });
+</script>
+截图预览
+Epsilon2.1
+
+
+Gantzert_Felixander
+
+
+haru
+
+
+miku
+
+
+ni-j
+
+
+nico
+
+
+nietzche
+
+
+nipsilon
+
+
+nito
+
+
+shizuku
+
+
+tsumiki
+
+
+wanko
+
+
+z16
+
+
+hibiki
+
+
+koharu
+
+
+haruto
+
+
+Unitychan
+
+
+tororo
+
+
+hijiki
+
+
+https://blog.csdn.net/qq_44204058/article/details/102959884

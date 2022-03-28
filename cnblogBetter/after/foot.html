@@ -1,0 +1,756 @@
+<!-- ............自定义尾部代码开始............ -->
+<div id="post-bottom-bar" class="post-bottom-bar" style="bottom: 0px;">
+	<div class="bottom-bar-inner">
+		<!-- 左边 -->
+        <div class="bottom-bar-items social-share" style="float: left;">
+
+        </div>
+        <!-- 右边 -->
+        <div class="bottom-bar-items right" style="float: right;">
+            <span class="bottom-bar-item"><a id="mbottom-left" href="javascript:void(0);">上一篇</a></span>
+            <span class="bottom-bar-item"><a id="mbottom-right" href="javascript:void(0);">下一篇</a></span>
+            <span class="bottom-bar-item"><a href="#mfooter">回到行首</a></span>
+            <span class="bottom-bar-item"><a href="#mtop">跳转行末</a></span>
+        </div>
+	</div> 
+</div>
+<a name="mfooter"></a>
+<!-- ............自定义尾部代码结束............ -->
+
+
+<script type="text/javascript">
+/* NProgress, (c) 2013, 2014 Rico Sta. Cruz - http://ricostacruz.com/nprogress
+ * @license MIT */
+
+;(function(root, factory) {
+
+  if (typeof define === 'function' && define.amd) {
+    define(factory);
+  } else if (typeof exports === 'object') {
+    module.exports = factory();
+  } else {
+    root.NProgress = factory();
+  }
+
+})(this, function() {
+  var NProgress = {};
+
+  NProgress.version = '0.2.0';
+
+  var Settings = NProgress.settings = {
+    minimum: 0.08,
+    easing: 'ease',
+    positionUsing: '',
+    speed: 200,
+    trickle: true,
+    trickleRate: 0.02,
+    trickleSpeed: 800,
+    showSpinner: true,
+    barSelector: '[role="bar"]',
+    spinnerSelector: '[role="spinner"]',
+    parent: 'body',
+    template: '<div class="bar" role="bar"><div class="peg"></div></div><div class="spinner" role="spinner"><div class="spinner-icon"></div></div>'
+  };
+
+  /**
+   * Updates configuration.
+   *
+   *     NProgress.configure({
+   *       minimum: 0.1
+   *     });
+   */
+  NProgress.configure = function(options) {
+    var key, value;
+    for (key in options) {
+      value = options[key];
+      if (value !== undefined && options.hasOwnProperty(key)) Settings[key] = value;
+    }
+
+    return this;
+  };
+
+  /**
+   * Last number.
+   */
+
+  NProgress.status = null;
+
+  /**
+   * Sets the progress bar status, where `n` is a number from `0.0` to `1.0`.
+   *
+   *     NProgress.set(0.4);
+   *     NProgress.set(1.0);
+   */
+
+  NProgress.set = function(n) {
+    var started = NProgress.isStarted();
+
+    n = clamp(n, Settings.minimum, 1);
+    NProgress.status = (n === 1 ? null : n);
+
+    var progress = NProgress.render(!started),
+        bar      = progress.querySelector(Settings.barSelector),
+        speed    = Settings.speed,
+        ease     = Settings.easing;
+
+    progress.offsetWidth; /* Repaint */
+
+    queue(function(next) {
+      // Set positionUsing if it hasn't already been set
+      if (Settings.positionUsing === '') Settings.positionUsing = NProgress.getPositioningCSS();
+
+      // Add transition
+      css(bar, barPositionCSS(n, speed, ease));
+
+      if (n === 1) {
+        // Fade out
+        css(progress, { 
+          transition: 'none', 
+          opacity: 1 
+        });
+        progress.offsetWidth; /* Repaint */
+
+        setTimeout(function() {
+          css(progress, { 
+            transition: 'all ' + speed + 'ms linear', 
+            opacity: 0 
+          });
+          setTimeout(function() {
+            NProgress.remove();
+            next();
+          }, speed);
+        }, speed);
+      } else {
+        setTimeout(next, speed);
+      }
+    });
+
+    return this;
+  };
+
+  NProgress.isStarted = function() {
+    return typeof NProgress.status === 'number';
+  };
+
+  /**
+   * Shows the progress bar.
+   * This is the same as setting the status to 0%, except that it doesn't go backwards.
+   *
+   *     NProgress.start();
+   *
+   */
+  NProgress.start = function() {
+    if (!NProgress.status) NProgress.set(0);
+
+    var work = function() {
+      setTimeout(function() {
+        if (!NProgress.status) return;
+        NProgress.trickle();
+        work();
+      }, Settings.trickleSpeed);
+    };
+
+    if (Settings.trickle) work();
+
+    return this;
+  };
+
+  /**
+   * Hides the progress bar.
+   * This is the *sort of* the same as setting the status to 100%, with the
+   * difference being `done()` makes some placebo effect of some realistic motion.
+   *
+   *     NProgress.done();
+   *
+   * If `true` is passed, it will show the progress bar even if its hidden.
+   *
+   *     NProgress.done(true);
+   */
+
+  NProgress.done = function(force) {
+    if (!force && !NProgress.status) return this;
+
+    return NProgress.inc(0.3 + 0.5 * Math.random()).set(1);
+  };
+
+  /**
+   * Increments by a random amount.
+   */
+
+  NProgress.inc = function(amount) {
+    var n = NProgress.status;
+
+    if (!n) {
+      return NProgress.start();
+    } else {
+      if (typeof amount !== 'number') {
+        amount = (1 - n) * clamp(Math.random() * n, 0.1, 0.95);
+      }
+
+      n = clamp(n + amount, 0, 0.994);
+      return NProgress.set(n);
+    }
+  };
+
+  NProgress.trickle = function() {
+    return NProgress.inc(Math.random() * Settings.trickleRate);
+  };
+
+  /**
+   * Waits for all supplied jQuery promises and
+   * increases the progress as the promises resolve.
+   *
+   * @param $promise jQUery Promise
+   */
+  (function() {
+    var initial = 0, current = 0;
+
+    NProgress.promise = function($promise) {
+      if (!$promise || $promise.state() === "resolved") {
+        return this;
+      }
+
+      if (current === 0) {
+        NProgress.start();
+      }
+
+      initial++;
+      current++;
+
+      $promise.always(function() {
+        current--;
+        if (current === 0) {
+            initial = 0;
+            NProgress.done();
+        } else {
+            NProgress.set((initial - current) / initial);
+        }
+      });
+
+      return this;
+    };
+
+  })();
+
+  /**
+   * (Internal) renders the progress bar markup based on the `template`
+   * setting.
+   */
+
+  NProgress.render = function(fromStart) {
+    if (NProgress.isRendered()) return document.getElementById('nprogress');
+
+    addClass(document.documentElement, 'nprogress-busy');
+    
+    var progress = document.createElement('div');
+    progress.id = 'nprogress';
+    progress.innerHTML = Settings.template;
+
+    var bar      = progress.querySelector(Settings.barSelector),
+        perc     = fromStart ? '-100' : toBarPerc(NProgress.status || 0),
+        parent   = document.querySelector(Settings.parent),
+        spinner;
+    
+    css(bar, {
+      transition: 'all 0 linear',
+      transform: 'translate3d(' + perc + '%,0,0)'
+    });
+
+    if (!Settings.showSpinner) {
+      spinner = progress.querySelector(Settings.spinnerSelector);
+      spinner && removeElement(spinner);
+    }
+
+    if (parent != document.body) {
+      addClass(parent, 'nprogress-custom-parent');
+    }
+
+    parent.appendChild(progress);
+    return progress;
+  };
+
+  /**
+   * Removes the element. Opposite of render().
+   */
+
+  NProgress.remove = function() {
+    removeClass(document.documentElement, 'nprogress-busy');
+    removeClass(document.querySelector(Settings.parent), 'nprogress-custom-parent');
+    var progress = document.getElementById('nprogress');
+    progress && removeElement(progress);
+  };
+
+  /**
+   * Checks if the progress bar is rendered.
+   */
+
+  NProgress.isRendered = function() {
+    return !!document.getElementById('nprogress');
+  };
+
+  /**
+   * Determine which positioning CSS rule to use.
+   */
+
+  NProgress.getPositioningCSS = function() {
+    // Sniff on document.body.style
+    var bodyStyle = document.body.style;
+
+    // Sniff prefixes
+    var vendorPrefix = ('WebkitTransform' in bodyStyle) ? 'Webkit' :
+                       ('MozTransform' in bodyStyle) ? 'Moz' :
+                       ('msTransform' in bodyStyle) ? 'ms' :
+                       ('OTransform' in bodyStyle) ? 'O' : '';
+
+    if (vendorPrefix + 'Perspective' in bodyStyle) {
+      // Modern browsers with 3D support, e.g. Webkit, IE10
+      return 'translate3d';
+    } else if (vendorPrefix + 'Transform' in bodyStyle) {
+      // Browsers without 3D support, e.g. IE9
+      return 'translate';
+    } else {
+      // Browsers without translate() support, e.g. IE7-8
+      return 'margin';
+    }
+  };
+
+  /**
+   * Helpers
+   */
+
+  function clamp(n, min, max) {
+    if (n < min) return min;
+    if (n > max) return max;
+    return n;
+  }
+
+  /**
+   * (Internal) converts a percentage (`0..1`) to a bar translateX
+   * percentage (`-100%..0%`).
+   */
+
+  function toBarPerc(n) {
+    return (-1 + n) * 100;
+  }
+
+
+  /**
+   * (Internal) returns the correct CSS for changing the bar's
+   * position given an n percentage, and speed and ease from Settings
+   */
+
+  function barPositionCSS(n, speed, ease) {
+    var barCSS;
+
+    if (Settings.positionUsing === 'translate3d') {
+      barCSS = { transform: 'translate3d('+toBarPerc(n)+'%,0,0)' };
+    } else if (Settings.positionUsing === 'translate') {
+      barCSS = { transform: 'translate('+toBarPerc(n)+'%,0)' };
+    } else {
+      barCSS = { 'margin-left': toBarPerc(n)+'%' };
+    }
+
+    barCSS.transition = 'all '+speed+'ms '+ease;
+
+    return barCSS;
+  }
+
+  /**
+   * (Internal) Queues a function to be executed.
+   */
+
+  var queue = (function() {
+    var pending = [];
+    
+    function next() {
+      var fn = pending.shift();
+      if (fn) {
+        fn(next);
+      }
+    }
+
+    return function(fn) {
+      pending.push(fn);
+      if (pending.length == 1) next();
+    };
+  })();
+
+  /**
+   * (Internal) Applies css properties to an element, similar to the jQuery 
+   * css method.
+   *
+   * While this helper does assist with vendor prefixed property names, it 
+   * does not perform any manipulation of values prior to setting styles.
+   */
+
+  var css = (function() {
+    var cssPrefixes = [ 'Webkit', 'O', 'Moz', 'ms' ],
+        cssProps    = {};
+
+    function camelCase(string) {
+      return string.replace(/^-ms-/, 'ms-').replace(/-([\da-z])/gi, function(match, letter) {
+        return letter.toUpperCase();
+      });
+    }
+
+    function getVendorProp(name) {
+      var style = document.body.style;
+      if (name in style) return name;
+
+      var i = cssPrefixes.length,
+          capName = name.charAt(0).toUpperCase() + name.slice(1),
+          vendorName;
+      while (i--) {
+        vendorName = cssPrefixes[i] + capName;
+        if (vendorName in style) return vendorName;
+      }
+
+      return name;
+    }
+
+    function getStyleProp(name) {
+      name = camelCase(name);
+      return cssProps[name] || (cssProps[name] = getVendorProp(name));
+    }
+
+    function applyCss(element, prop, value) {
+      prop = getStyleProp(prop);
+      element.style[prop] = value;
+    }
+
+    return function(element, properties) {
+      var args = arguments,
+          prop, 
+          value;
+
+      if (args.length == 2) {
+        for (prop in properties) {
+          value = properties[prop];
+          if (value !== undefined && properties.hasOwnProperty(prop)) applyCss(element, prop, value);
+        }
+      } else {
+        applyCss(element, args[1], args[2]);
+      }
+    }
+  })();
+
+  /**
+   * (Internal) Determines if an element or space separated list of class names contains a class name.
+   */
+
+  function hasClass(element, name) {
+    var list = typeof element == 'string' ? element : classList(element);
+    return list.indexOf(' ' + name + ' ') >= 0;
+  }
+
+  /**
+   * (Internal) Adds a class to an element.
+   */
+
+  function addClass(element, name) {
+    var oldList = classList(element),
+        newList = oldList + name;
+
+    if (hasClass(oldList, name)) return; 
+
+    // Trim the opening space.
+    element.className = newList.substring(1);
+  }
+
+  /**
+   * (Internal) Removes a class from an element.
+   */
+
+  function removeClass(element, name) {
+    var oldList = classList(element),
+        newList;
+
+    if (!hasClass(element, name)) return;
+
+    // Replace the class name.
+    newList = oldList.replace(' ' + name + ' ', ' ');
+
+    // Trim the opening and closing spaces.
+    element.className = newList.substring(1, newList.length - 1);
+  }
+
+  /**
+   * (Internal) Gets a space separated list of the class names on the element. 
+   * The list is wrapped with a single space on each end to facilitate finding 
+   * matches within the list.
+   */
+
+  function classList(element) {
+    return (' ' + (element.className || '') + ' ').replace(/\s+/gi, ' ');
+  }
+
+  /**
+   * (Internal) Removes an element from the DOM.
+   */
+
+  function removeElement(element) {
+    element && element.parentNode && element.parentNode.removeChild(element);
+  }
+
+  return NProgress;
+});
+
+</script>
+<script type="text/javascript">
+
+    //博主名称 可不改，默认取博客园提供的
+    var nickName = null;
+    //slogan
+    var slogan = 'Zic`Blog';
+    //默认博客背景图片
+    var defaultPic="https://scpic.chinaz.net/files/pic/pic9/202112/apic37019.jpg";
+    //icon(浏览器标题栏上的)
+    var iconB="https://img2018.cnblogs.com/blog/1138447/201909/1138447-20190911161817172-1737762696.png";
+    var myGayhubUrl = null;
+</script>
+<script type="text/javascript">
+	/**
+		用来设置初始时需要执行的js
+	*/
+	$(document).ready(function(){
+
+        //获取博主名字
+        if (nickName == null){
+            var footerOverTestArray = $($("#footer")[0].childNodes[2]).text().trim().split(" ");
+            nickName = footerOverTestArray[footerOverTestArray.length - 1];
+        }
+
+		//加载顶部进度条
+	    NProgress.start();
+	    NProgress.done();
+	    $("#myProgressBar").hide();
+
+	    //设置背景图片地址
+	    if ($("#head_bg_img").val()!=null && $("#head_bg_img").val()!="") {
+	    	$("#myheader_bg").css("background-image","url("+$("#head_bg_img").val()+")");
+	    }else{
+    		$("#myheader_bg").css("background-image","url("+defaultPic+")");
+	    }
+
+	    //设置标题
+        if($("#cb_post_title_url").html()){
+            $("#mypost_title_h").html($("#cb_post_title_url").html());
+        }else{
+            $("#mypost_title_h").html(nickName);
+        }
+
+	    //正文和标题淡入
+	    $("#mainContent").css("opacity","1");
+	    $("#mainContent").css("margin-top","0");
+	    $("#mypost_title").css("opacity","1");
+	    $("#mypost_title").css("top","75pt");
+
+        /* --根据个人配置修改页面 start-- */
+        //修改a链接
+        var ccList = $(".c-c");
+        for(var cc of ccList){
+            $(cc).attr("href", $(cc).attr("href").replace("zichliang",currentBlogApp));
+        }
+        //设置Github链接
+        if (myGayhubUrl != null ){$("#myGayhubUrl").attr("href",myGayhubUrl)}
+        //设置友链的链接
+        // $("#friendLink").attr("href",friendLink);
+        //设置关于的链接
+        // $("#aboutMe").attr("href",aboutMe);
+        //设置两个iocn图标
+        // $("#nv-icon").attr("src",icon);
+        var linkObject = document.createElement("link");
+        linkObject.rel = "shortcut icon";
+        linkObject.href = iconB;
+        document.getElementsByTagName("head")[0].appendChild(linkObject);
+        //设置底部栏按钮
+        if (window.location.href == "https://www.cnblogs.com/"+currentBlogApp|| 
+                window.location.href == "https://www.cnblogs.com/"+currentBlogApp+"/"||
+                window.location.href == "http://www.cnblogs.com/"+currentBlogApp|| 
+                window.location.href == "http://www.cnblogs.com/"+currentBlogApp+"/") {
+            $("#bottom-d").html("友情链接");
+            $("#bottom-d").attr("href",friendLink);
+        }else{
+            var url = window.location.href;
+            var lastUrl = url.substring(url.lastIndexOf("/")+1);
+            var mpageId = lastUrl.substring(0,lastUrl.indexOf("."));
+            $("#bottom-d").click(function(){
+                DiggIt(mpageId,cb_blogId,1);
+                green_channel_success(this,'谢谢推荐！');
+            })
+        }
+        /* --根据个人配置修改页面 end-- */
+	})
+
+	/**
+		设置ajax请求加载完所有数据时执行的js
+	*/
+	setTimeout(afterAjax,1000);
+	function afterAjax(){
+		//假如是首页
+		if (window.location.href == "https://www.cnblogs.com/"+currentBlogApp|| 
+			window.location.href == "https://www.cnblogs.com/"+currentBlogApp+"/"||
+			window.location.href == "http://www.cnblogs.com/"+currentBlogApp|| 
+			window.location.href == "http://www.cnblogs.com/"+currentBlogApp+"/") {
+			$("#mypost_title_e").html('<a href="https://cnblogs.com/'+currentBlogApp+'">'+slogan+'</a>');
+		}else{
+		    var classification = null;
+		    if ($("#BlogPostCategory").html()!=null && $("#BlogPostCategory").html()!= "") {
+		    	classification = $("#BlogPostCategory").html();
+		    	classification = classification.substring(3,classification.length);
+		    }else{
+		    	classification = '<a href="https://cnblogs.com/'+currentBlogApp+'">暂未分类</a>';
+		    }
+		    var ftitle = 'Published on '+ $("#post-date").html() + ' in ' +  classification
+		    + ' with <a href="https://cnblogs.com/'+currentBlogApp+'">' + nickName + '</a>';
+		    //设置副标题标题
+		    $("#mypost_title_f").html(ftitle);
+		    //设置标题分类按钮
+		    $("#mypost_title_e").html(classification);
+		    //设置底部导航条上一篇下一篇文章
+		    var pnp = $("#post_next_prev a");
+		    $("#mbottom-left").attr("href",pnp[1].href);
+		    if (pnp.length>2) {
+		    	$("#mbottom-right").attr("href",pnp[3].href);
+		    }
+		}
+		$("#myheader_bg").css("filter","blur(0px)");
+
+        //优化评论区样式
+        $("#comment_form_container p:last").hide();
+        $("#commentbox_opt a:last").hide();
+        $("#tbCommentBody").attr('placeholder','Your comment here. Be cool. ');
+	}
+
+
+	/** 
+		自定义的js方法
+	*/
+	//设置底部导航条点击关注按钮事件
+	$("#bottom-g").click(function(){
+		$('#green_channel_follow').click()
+		return false
+	})
+	$("#bottom-s").click(function(){
+		AddToWz(cb_entryId);
+		return false;
+	})
+
+
+	//通过滚动条控制导航条的展现隐藏
+	var oldScrollNum = 0;
+	window.onscroll = function(){
+		var t = document.documentElement.scrollTop || document.body.scrollTop;
+		//下滑
+		if (t>oldScrollNum) {
+			if (t>120) {
+				$("#mynavbar").css("margin-top","-70px");//顶部导航
+				$("#post-bottom-bar").css("bottom","-3pc");//底部导航
+			}
+			if (t>300) {
+				$("#right_meun").css("display","inline-block");//右侧导航
+			}
+		//上拉
+		}else{
+			//防止用a链接跳转也触发效果
+			if (oldScrollNum-t<20) {
+				$("#mynavbar").css("margin-top","0px");//顶部导航
+				$("#post-bottom-bar").css("bottom","0");//底部导航
+			}
+			if (t<=300) {
+				$("#right_meun").css("display","none");//右侧导航
+			}
+		}
+		oldScrollNum = t;
+	}
+
+	//背景大图点击模糊||清晰
+	$("#myheader_cover").click(function(){
+		if ($("#myheader_bg").css("filter") == "blur(3px)") {
+			$("#myheader_bg").css("filter","blur(0px)");
+		}else{
+			$("#myheader_bg").css("filter","blur(3px)");
+		}
+	})
+ </script>
+
+ <script type="text/javascript">  
+    var setMyBlog = {
+        setCopyright: function() {
+            //设置版权信息，转载出处自动根据页面url生成
+            var info_str = '<p>作者：<a target="_blank">@gzdaijie</a><br>'+
+                '本文为作者原创，转载请注明出处：<a class="uri"></a></p><hr></hr>', 
+                info = $(info_str),
+                info_a = info.find("a"),
+                url = window.location.href;
+            $(info_a[0]).attr("href","https://github.com/hybpjx");
+            $(info_a[1]).attr("href",url).text(url);
+            $("#cnblogs_post_body").prepend(info);
+        },
+        setCodeRow: function(){
+            // 代码行号显示
+            var pre = $("pre.sourceCode"); //选中需要更改的部分
+            if(pre && pre.length){
+                pre.each(function() {
+                    var item = $(this);
+                    var lang = item.attr("class").split(" ")[1]; //判断高亮的语言
+                    item.html(item.html().replace(/<[^>]+>/g,"")); //将<pre>标签中的html标签去掉
+                    item.removeClass().addClass("brush: " + lang +";"); //根据语言添加笔刷
+                    SyntaxHighlighter.all();
+                })
+            }
+        },
+        setAtarget: function() {
+            // 博客内的链接在新窗口打开
+            $("#cnblogs_post_body a").each(function(){
+                this.target = "_blank";
+            }) 
+        },
+        setContent: function() {
+            // 根据h2、h3标签自动生成目录
+            var captions_ori = $("#cnblogs_post_body h2"),
+            	captions_ori2 = $("#cnblogs_post_body h3"),
+                captions = $("#cnblogs_post_body h2,#cnblogs_post_body h3").clone(),
+                content = $("<ul id='right_meun'></ul>");
+            $("#cnblogs_post_body").prepend(content.append(captions));
+            var index = -1,index2 = -1;
+            captions.replaceWith(function(){
+                var self = this;
+                if(self.tagName == "H2" || self.tagName == "h2"){
+                    // 设置点击目录跳转
+                    index += 1;
+                    $('<a name="' + '_caption_' + index + '"></a>').insertBefore(captions_ori[index]); 
+                    return '<li id="'+index+'li"><a href="#_caption_' + index + '">' + self.innerHTML + '</a><ul></ul></li>';
+                } else {
+                  
+                    index2 += 1;
+                    $('<a name="' + '_caption' + index2 + '"></a>').insertBefore(captions_ori2[index2]); 
+                    $("#"+index+"li ul").append('<li><a href="#_caption' + index2 + '" style="color:#5f5f5f;">' +self.innerHTML+"</a></li>");
+                    return ;
+                }
+            });
+        },
+        runAll: function() {
+            /* 运行所有方法
+             * setAtarget() 博客园内标签新窗口打开
+             * setContent() 设置目录
+             * setCopyright() 设置版权信息
+             * setCodeRow() 代码行号显示
+             */ 
+            this.setAtarget(); 
+            //假如为手机端不显示目录
+            if(document.body.clientWidth>=1000){
+                this.setContent();
+            }
+            // this.setCopyright();
+            this.setCodeRow();
+        }
+    }
+    setMyBlog.runAll();
+</script>
+
+<!-- 代码行号
+<script>
+!function(e){"use strict";function t(){"complete"===document.readyState?n():e.addEventListener("DOMContentLoaded",n)}function n(){try{var e=document.querySelectorAll("code.hljs");for(var t in e)e.hasOwnProperty(t)&&r(e[t])}catch(n){console.error("LineNumbers error: ",n)}}function r(e){if("object"==typeof e){var t=e.parentNode,n=o(t.textContent);if(n>1){for(var r="",c=0;n>c;c++)r+=c+1+"\n";var l=document.createElement("code");l.className="hljs hljs-line-numbers",l.style["float"]="left",l.textContent=r,t.insertBefore(l,e)}}}function o(e){if(0===e.length)return 0;var t=/\r\n|\r|\n/g,n=e.match(t);return n=n?n.length:0,e[e.length-1].match(t)||(n+=1),n}"undefined"==typeof e.hljs?console.error("highlight.js not detected!"):(e.hljs.initLineNumbersOnLoad=t,e.hljs.lineNumbersBlock=r)}(window);
+
+</script> -->
